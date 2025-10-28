@@ -59,7 +59,6 @@ def main(debug=False, train=True):
 
     folders = os.listdir(path)
     train_files = []
-    test_files = []
     val_files = []
     for i, files in enumerate(folders):
         if files.startswith("."):
@@ -68,8 +67,6 @@ def main(debug=False, train=True):
         for file in files:
             if file.endswith("train.hdf5"):
                 train_files.append(os.path.join(path, folders[i], file))
-            elif file.endswith("test.hdf5"):
-                test_files.append(os.path.join(path, folders[i], file))
             elif file.endswith("val.hdf5"):
                 val_files.append(os.path.join(path, folders[i], file))
 
@@ -95,17 +92,6 @@ def main(debug=False, train=True):
             if i >= 2:  # load only 2 files in debug mode
                 break
 
-    test_df = pd.DataFrame()
-    i = 0
-    for file in tqdm(test_files, desc="Loading test files"):
-        data = load_h5py_file(file)
-        temp_df = pd.DataFrame(data)
-        test_df = pd.concat([test_df, temp_df], ignore_index=True)
-        if debug:
-            i += 1
-            if i >= 2:  # load only 2 files in debug mode
-                break
-
 
     # ------------------------ Dataset and Dataloader ------------------------
     train_dataset = NeuralDataset(train_df, blank_id=BLANK_ID)
@@ -124,24 +110,13 @@ def main(debug=False, train=True):
         collate_fn=lambda b: collate_batch(b)
     )
 
-    test_dataset = NeuralDataset(test_df, blank_id=BLANK_ID)
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=16,
-        shuffle=True,
-        collate_fn=lambda b: collate_batch(b)
-    )
-
     # ------------------------ Define Model ------------------------
-    # model = CTCEncoder(
-    #     vocab_size=VOCAB_SIZE,
-    #     blank_id=BLANK_ID,
-    #     use_gru=True
-    # ).to(DEVICE)
-    model = ConformerCTC(
+    # We only use 2 layers for fast training. Increase number of layers for better accuracy.
+    model = CTCEncoder(
         vocab_size=VOCAB_SIZE,
         blank_id=BLANK_ID,
-        n_layers=2,
+        rnn_layers=2,
+        use_gru=True
     ).to(DEVICE)
 
     # number of model parameters
@@ -151,15 +126,14 @@ def main(debug=False, train=True):
     print(f"Model has {num_trainable_params:,} trainable parameters.")
 
     # ------------------------ Training ------------------------
-
     trainer = Trainer(
         model=model,
-        optimizer=torch.optim.AdamW(model.parameters(), lr=1e-3, betas=(0.9, 0.98), weight_decay=1e-2),
+        optimizer=torch.optim.AdamW(model.parameters(), lr=1e-3, betas=(0.9, 0.98), weight_decay=1e-3),
         loss_fn=nn.CTCLoss(blank=BLANK_ID, reduction="mean", zero_infinity=True),
         train_loader=train_loader,
         val_loader=val_loader,
         device=DEVICE,
-        epochs=1,
+        epochs=100,
         blank_id=BLANK_ID,
         early_stop=EarlyStopping(patience=5, min_delta=1e-3, path=f"./model/{model.__str__()}_best_model.pt"),
         sample_interval=5,
@@ -168,7 +142,7 @@ def main(debug=False, train=True):
         print("Starting training...")
         trainer.run()
     else:
-        model.load_state_dict(torch.load("./model/best_model.pt", map_location=DEVICE))
+        model.load_state_dict(torch.load(f"./model/{model.__str__()}_best_model.pt", map_location=DEVICE))
     trainer.predict_sample()
 
     # ------------------------ Evaluation on Test Set ------------------------
