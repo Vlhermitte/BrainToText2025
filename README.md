@@ -9,7 +9,7 @@ For Emma et Cat
 
 Later also:
 - Try to train with deeper network `(e.g., 8 rnn_layers)`
-- We can also try to tak advantage of brain regions segmentation in the model architecture.
+- We can also try to take advantage of brain regions segmentation in the model architecture.
 
 ## What does the code do (in short):
 
