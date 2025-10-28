@@ -14,7 +14,7 @@ class NeuralDataset(Dataset):
       - 'transcriptions': str (ASCII) or List[int] in 0..127
       - 'sentence_label': str (used to determine target length)
     """
-    def __init__(self, df: pd.DataFrame, blank_id: int = 127):
+    def __init__(self, df: pd.DataFrame, blank_id: int = 128):
         self.df = df.reset_index(drop=True)
         self.blank_id = blank_id
 
