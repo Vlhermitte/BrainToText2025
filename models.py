@@ -137,7 +137,7 @@ class CTCEncoder(nn.Module):
         return logits, lengths
 
     def __str__(self):
-        return f"ctc_encoder_rnn_{'gru' if isinstance(self.rnn, nn.GRU) else 'lstm'}_{self.rnn.num_layers}_layers"
+        return f"ctc_encoder_{'c' if self.use_conv else ''}rnn_{'gru' if isinstance(self.rnn, nn.GRU) else 'lstm'}_{self.rnn.num_layers}_layers"
 
 
 # ---------------------- Conformer CTC (Just for fun) ----------------------
