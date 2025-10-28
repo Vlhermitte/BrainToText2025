@@ -1,4 +1,5 @@
 from tqdm import tqdm
+import os
 
 import torch
 from torch import nn
@@ -9,6 +10,9 @@ from evaluation import predict_sentence
 from data import ascii_ids_to_text
 
 class EarlyStopping:
+    """
+    Early stopping utility to stop training when validation loss does not improve.
+    """
     def __init__(self, patience=5, min_delta=1e-3, path="best_model.pt"):
         """
         patience: epochs to wait after last improvement
@@ -26,6 +30,8 @@ class EarlyStopping:
         if value < self.best - self.min_delta:
             self.best = value
             self.bad_epochs = 0
+            if not os.path.exists(os.path.dirname(self.path)):
+                os.makedirs(os.path.dirname(self.path))
             # save best weights
             torch.save(model.state_dict(), self.path)
         else:
@@ -36,6 +42,9 @@ class EarlyStopping:
 
 # python
 class Trainer:
+    """
+    Trainer class to handle training and validation of a model.
+    """
     def __init__(
         self,
         model: nn.Module,
@@ -84,8 +93,14 @@ class Trainer:
 
     @torch.no_grad()
     def predict_sample(self, idx: int = None):
+        """
+        Predict and print a sample from the validation set.
+        If idx is None, a random sample is chosen.
+        :param idx:
+        :return:
+        """
+        # TODO: look at this function (especially predict_sentence() function)
         if idx is None:
-            #random.seed(42)
             idx = random.randrange(len(self.val_loader.dataset))
             print(f"Using random sample index: {idx}")
         self.model.eval()
@@ -99,7 +114,7 @@ class Trainer:
             print(f"Predicted text: {pred_text}")
 
     @torch.no_grad()
-    def run_validation(self):
+    def run_validation(self) -> float:
         self.model.eval()
         total_loss, total_items = 0.0, 0
         for x, x_len, y, y_len in self.val_loader:
@@ -112,7 +127,10 @@ class Trainer:
             total_items += bs
         return total_loss / max(1, total_items)
 
-    def run(self):
+    def run(self) -> None:
+        """
+        Train the model with early stopping based on validation loss.
+        """
         for epoch in range(self.epochs):
             self._train_one_epoch(epoch)
 
