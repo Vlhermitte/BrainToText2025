@@ -1,5 +1,5 @@
 import os
-os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"  # Enable CPU fallback for MPS
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"  # Enable CPU fallback for MPS (for macOS only)
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -10,11 +10,9 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from load_data import load_h5py_file
 from tqdm import tqdm
 
-
-from data import NeuralDataset, collate_batch
+from data import NeuralDataset, collate_batch, load_h5py_file
 from evaluation import run_evaluate
 from models import CTCEncoder, ConformerCTC
 from training import Trainer, EarlyStopping
@@ -135,14 +133,14 @@ def main(debug=False, train=True):
         device=DEVICE,
         epochs=100,
         blank_id=BLANK_ID,
-        early_stop=EarlyStopping(patience=5, min_delta=1e-3, path=f"./model/{model.__str__()}_best_model.pt"),
+        early_stop=EarlyStopping(patience=5, min_delta=1e-3, path=f"./models/{model.__str__()}_best_model.pt"),
         sample_interval=5,
     )
     if train:
         print("Starting training...")
         trainer.run()
     else:
-        model.load_state_dict(torch.load(f"./model/{model.__str__()}_best_model.pt", map_location=DEVICE))
+        model.load_state_dict(torch.load(f"./models/{model.__str__()}_best_model.pt", map_location=DEVICE))
     trainer.predict_sample()
 
     # ------------------------ Evaluation on Test Set ------------------------
