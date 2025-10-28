@@ -10,9 +10,10 @@ from data import ascii_ids_to_text
 @torch.no_grad()
 def greedy_decode(logits: torch.Tensor, blank_id=128) -> List[str]:
     """
-        logits: (T, B, C) raw output
-        Returns list of lists of predicted token IDs (per batch)
-        """
+    logits: (T, B, C) raw output
+    Returns list of lists of predicted token IDs (per batch)
+    """
+    # We don't need to take log_softmax here, as argmax is invariant to monotonic transformations
     best = logits.argmax(dim=-1)  # (T, B)
     best = best.cpu().numpy()
     results = []
@@ -40,13 +41,14 @@ def predict_sentence(model: nn.Module, x: torch.Tensor, blank_id=128) -> str:
         x_len = torch.tensor([x.shape[0]], dtype=torch.long).to(device)  # (1,)
         logits, _ = model(x, x_len)  # (T, 1, C)
 
+        # TODO: replace greedy decode with beam search decode
         decoded_ids = greedy_decode(logits, blank_id=blank_id)[0]
         decoded_text = ascii_ids_to_text(decoded_ids)
 
     return decoded_text, logits.argmax(dim=-1).squeeze(1).cpu().tolist()
 
 
-def run_evaluate(model, dataloader, vocab_size=129, blank_id=128, device='cpu'):
+def run_evaluate(model, dataloader, blank_id=128, device='cpu'):
     model.eval()
     cer_total, wer_total = 0.0, 0.0
     n = 0
@@ -56,17 +58,14 @@ def run_evaluate(model, dataloader, vocab_size=129, blank_id=128, device='cpu'):
             # move to device
             x_pad = x_pad.to(device)
             x_len = x_len.to(device)
-            # transpose for (T,B,F)
-            x_tbF = x_pad.permute(1,0,2).contiguous()
 
             # forward
-            logits, in_len = model(x_tbF, x_len)
-            log_probs = logits.log_softmax(dim=-1)
+            logits, _ = model(x_pad, x_len)
 
-            # greedy decode
-            pred_ids_batch = greedy_decode(log_probs, blank_id=blank_id)
+            # TODO : replace greedy decode with beam search decode
+            pred_ids_batch = greedy_decode(logits, blank_id=blank_id)
 
-            # gather reference strings (you may store them in dataset.df)
+            # gather reference strings
             batch_refs = []
             for i in range(len(x_len)):
                 start = sum(target_len[:i])
@@ -85,8 +84,8 @@ def run_evaluate(model, dataloader, vocab_size=129, blank_id=128, device='cpu'):
 
     avg_cer = cer_total / n
     avg_wer = wer_total / n
-    print(f"Test Character Error Rate (Levenshtein distance normalized by reference length): {avg_cer:.3f}")
-    print(f"Word Error Rate (Levenshtein distance on words): {avg_wer:.3f}")
+    print(f"Test Character Error Rate (lower is better): {avg_cer:.3f}")
+    print(f"Word Error Rate (lower is better): {avg_wer:.3f}")
     return avg_cer, avg_wer
 
 def levenshtein(a, b):
