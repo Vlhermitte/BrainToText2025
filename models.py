@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# ---------------------- CTC Encoder ----------------------
+# ---------------------- CTC Encoder (What you need to focus on) ----------------------
 
 class ConvSubsampler1D(nn.Module):
     """
@@ -140,7 +140,7 @@ class CTCEncoder(nn.Module):
         return f"ctc_encoder_rnn_{'gru' if isinstance(self.rnn, nn.GRU) else 'lstm'}_{self.rnn.num_layers}_layers"
 
 
-# ---------------------- Conformer CTC ----------------------
+# ---------------------- Conformer CTC (Just for fun) ----------------------
 
 class Swish(nn.Module):
     def forward(self, x):  # swish = x * sigmoid(x)
