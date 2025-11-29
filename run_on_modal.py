@@ -74,17 +74,25 @@ def download_and_extract_dataset(url: str, extract_to: str) -> bool:
     extract_path = Path(extract_to)
     extract_path.mkdir(parents=True, exist_ok=True)
 
-    # Check if data already exists
-    if any(extract_path.iterdir()):
-        print(f"Data already exists at {extract_to}. Skipping download.")
+    # Check if data already exists at the expected path
+    expected_data_path = Path(MODAL_DATA_PATH)
+    if expected_data_path.exists() and any(expected_data_path.iterdir()):
+        print(f"Data already exists at {MODAL_DATA_PATH}. Skipping download.")
         return True
 
     print(f"Downloading dataset from {url}...")
 
     try:
-        # Download the file
+        # Download the file with progress reporting
         zip_path = extract_path / "dataset.zip"
-        urllib.request.urlretrieve(url, zip_path)
+
+        def _report_progress(block_num, block_size, total_size):
+            if total_size > 0:
+                percent = min(100, block_num * block_size * 100 // total_size)
+                if block_num % 100 == 0:  # Report every 100 blocks
+                    print(f"Download progress: {percent}%")
+
+        urllib.request.urlretrieve(url, zip_path, reporthook=_report_progress)
 
         print("Extracting dataset...")
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
@@ -92,6 +100,16 @@ def download_and_extract_dataset(url: str, extract_to: str) -> bool:
 
         # Clean up the zip file
         zip_path.unlink()
+
+        # Validate that the expected path now exists
+        if not expected_data_path.exists():
+            print(
+                f"WARNING: Expected data path {MODAL_DATA_PATH} not found after extraction. "
+                "The ZIP archive may have a different directory structure."
+            )
+            print(f"Contents of {extract_to}: {list(Path(extract_to).iterdir())}")
+            return False
+
         print("Dataset download and extraction complete.")
         return True
 
@@ -103,7 +121,7 @@ def download_and_extract_dataset(url: str, extract_to: str) -> bool:
 @app.function(
     image=image,
     volumes={"/data": dataset_volume},
-    gpu="any",
+    gpu="T4",  # Use T4 for cost-effective training; change to "A100" for faster training
     timeout=3600 * 4,  # 4 hour timeout for training
 )
 def run_b2t_job(debug: bool = True, train: bool = True, dataset_url: str = "") -> dict:
