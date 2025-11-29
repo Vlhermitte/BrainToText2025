@@ -5,3 +5,4 @@ torch~=2.8.0
 tqdm~=4.67.1
 seaborn~=0.13.2
 matplotlib~=3.10.6
+modal~=1.0.0

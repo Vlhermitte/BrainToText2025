@@ -53,7 +53,10 @@ BLOCKS = {
 
 def main(debug=False, train=True):
     # ------------------------ Load data from hdf5 files to Dataframe ------------------------
-    path = "./brain-to-text-25/t15_copyTask_neuralData/hdf5_data_final/"
+    path = os.environ.get(
+        "B2T_DATA_PATH",
+        "./brain-to-text-25/t15_copyTask_neuralData/hdf5_data_final/"
+    )
 
     folders = os.listdir(path)
     train_files = []

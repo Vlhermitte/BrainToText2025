@@ -1,3 +1,16 @@
 # Project exclude paths
 /brain-to-text-25/
 /.idea
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Model outputs
+/models/
